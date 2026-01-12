@@ -10,6 +10,10 @@ export const createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+      if(req.user.role === "creator" && role === "admin"){
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    
     const user = await prisma.user.create({
       data: {
         name,
@@ -126,6 +130,110 @@ export const getUsers = async (req, res) => {
   }
 };
 
+export const getCreatorUsers = async (req, res) => {
+    try {
+    const pageRaw = req.query.page;
+    const limitRaw = req.query.limit;
+    const q = String(req.query.q || "").trim();
+    const role = String(req.query.role || "all").trim();
+    const city = String(req.query.city || "all").trim();
+    const status = String(req.query.status || "all").trim();
+    const preference = String(req.query.preference || "any").trim();
+
+    const page = Math.max(1, parseInt(pageRaw || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(5, parseInt(limitRaw || "10", 10) || 10));
+
+    const where = { AND: [] };
+    
+    if(role === 'admin'){
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    if(role === 'all'){
+      where.AND.push({ role: { not: 'admin' } });
+    }
+    if (q) {
+      where.AND.push({
+        OR: [{ name: { contains: q } }, { email: { contains: q } }],
+      });
+    }
+
+    if (role && role !== "all") {
+      where.AND.push({ role });
+    }
+
+    if (city && city !== "all") {
+      where.AND.push({ city });
+    }
+
+    if (status === "active") {
+      where.AND.push({ is_active: true });
+    } else if (status === "inactive") {
+      where.AND.push({ is_active: false });
+    }
+
+    if (preference && preference !== "any") {
+      const prefField =
+        preference === "offers"
+          ? "offers"
+          : preference === "order_updates"
+            ? "order_updates"
+            : preference === "newsletter"
+              ? "newsletter"
+              : null;
+
+      if (prefField) {
+        where.AND.push({ preference: { is: { [prefField]: true } } });
+      }
+    }
+
+    if (where.AND.length === 0) {
+      delete where.AND;
+    }
+
+    const total = await prisma.user.count({ where });
+    const totalPages = total === 0 ? 1 : Math.ceil(total / limit);
+    const safePage = Math.min(page, totalPages);
+    const skip = (safePage - 1) * limit;
+
+    const items = await prisma.user.findMany({
+      where,
+      orderBy: [{ created_at: "desc" }, { user_id: "desc" }],
+      skip,
+      take: limit,
+      select: {
+        user_id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        city: true,
+        is_active: true,
+        preference: {
+          select: {
+            offers: true,
+            order_updates: true,
+            newsletter: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      items,
+      meta: {
+        page: safePage,
+        limit,
+        total,
+        totalPages,
+        hasPrev: safePage > 1,
+        hasNext: safePage < totalPages,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 // GET USER FILTER OPTIONS (roles + distinct cities)
 export const getUserOptions = async (req, res) => {
   try {
@@ -142,6 +250,33 @@ export const getUserOptions = async (req, res) => {
 
     res.json({
       roles: ["admin", "creator", "viewer", "user"],
+      cities,
+      statuses: ["all", "active", "inactive"],
+      preferences: ["any", "offers", "order_updates", "newsletter"],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getCreatorUserOptions = async (req, res) => {
+  try {
+    const citiesRaw = await prisma.user.findMany({
+      distinct: ["city"],
+      select: { city: true },
+      where: { 
+                city: { not: null },
+                role : {not : 'admin'}
+            },
+    });
+
+    const cities = citiesRaw
+      .map((r) => (r.city || "").trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    res.json({
+      roles: [ "creator", "viewer", "user"],
       cities,
       statuses: ["all", "active", "inactive"],
       preferences: ["any", "offers", "order_updates", "newsletter"],
@@ -315,6 +450,19 @@ export const deleteUser = async (req, res) => {
   const id = parseInt(req.params.id);
 
   if (req.user?.role === "user" && req.user?.userId !== id) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  const user = await prisma.user.findUnique({
+    where: { user_id: id },
+  });
+
+  if(!user){
+    return res.status(404).json({ message: "User not found" });
+  }
+  if(req.user.role === "creator" && (user?.role === "admin")){
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  if(req.user.role === user.role){
     return res.status(403).json({ message: "Forbidden" });
   }
 
