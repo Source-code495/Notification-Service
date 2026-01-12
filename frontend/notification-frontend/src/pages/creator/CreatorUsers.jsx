@@ -11,11 +11,13 @@ import UserDetailsModal from "../../components/UserDetailsModal";
 import {
   createUser,
   deleteUser,
-  getUserOptions,
-  listUsersPaged,
+  getCreatorUserOptions,
+  listCreatorUsersPaged,
   uploadUsersCsv,
+  getMe
 } from "../../services/userService";
 import { getErrorMessage } from "../../services/http";
+// import { use } from "react";
 
 export default function CreatorUsers() {
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function CreatorUsers() {
   const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1, hasPrev: false, hasNext: false });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-
+  const [me,setMe] = useState(null);
   const [options, setOptions] = useState({ roles: ["admin", "creator", "viewer", "user"], cities: [] });
 
   const [filters, setFilters] = useState({
@@ -50,7 +52,7 @@ export default function CreatorUsers() {
 
   async function loadOptions() {
     try {
-      const data = await getUserOptions();
+      const data = await getCreatorUserOptions();
       setOptions({
         roles: data?.roles?.length ? data.roles : ["admin", "creator", "viewer", "user"],
         cities: data?.cities || [],
@@ -68,7 +70,7 @@ export default function CreatorUsers() {
     setLoading(true);
     setError("");
     try {
-      const data = await listUsersPaged({
+      const data = await listCreatorUsersPaged({
         page: pageToUse,
         limit: limitToUse,
         q: filtersToUse.q,
@@ -77,6 +79,9 @@ export default function CreatorUsers() {
         status: filtersToUse.status,
         preference: filtersToUse.preference,
       });
+      const me = await getMe();
+      setMe(me); 
+      console.log(me)
       setUsers(data?.items || []);
       setMeta(data?.meta || { page: pageToUse, limit: limitToUse, total: 0, totalPages: 1, hasPrev: false, hasNext: false });
       if (data?.meta?.page && data.meta.page !== pageToUse) setPage(data.meta.page);
@@ -373,7 +378,7 @@ export default function CreatorUsers() {
           await fetchPage();
           await loadOptions();
         }}
-        allowDelete
+         allowDelete={ selectedUser?.role !== me?.role}
         onDelete={async (u) => {
           try {
             setError("");

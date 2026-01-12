@@ -392,7 +392,7 @@ export default function AdminUsers() {
           await fetchPage();
           await loadOptions();
         }}
-        allowDelete
+        allowDelete = { selectedUser?.role !== "admin" }
         onDelete={async (u) => {
           try {
             setError("");

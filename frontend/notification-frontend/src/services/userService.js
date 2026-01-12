@@ -10,8 +10,17 @@ export async function listUsersPaged(params) {
   return data;
 }
 
+export async function listCreatorUsersPaged(params) {
+  const { data } = await http.get("/users/creator-users", { params });
+  return data;
+}
+
 export async function getUserOptions() {
   const { data } = await http.get("/users/options");
+  return data;
+}
+export async function getCreatorUserOptions() {
+  const { data } = await http.get("/users/creator-options");
   return data;
 }
 
