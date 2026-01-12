@@ -1,0 +1,16 @@
+name,email,phone,city,role,is_active,password,created_at,updated_at
+Aarav Sharma,aarav.sharma@gmail.com,9876543210,Delhi,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Riya Verma,riya.verma@gmail.com,9876543211,Mumbai,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Kabir Mehta,kabir.mehta@gmail.com,9876543212,Pune,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Ananya Singh,ananya.singh@gmail.com,9876543213,Jaipur,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Rohan Patel,rohan.patel@gmail.com,9876543214,Ahmedabad,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Sneha Iyer,sneha.iyer@gmail.com,9876543215,Chennai,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Arjun Nair,arjun.nair@gmail.com,9876543216,Kochi,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Pooja Malhotra,pooja.malhotra@gmail.com,9876543217,Chandigarh,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Kunal Gupta,kunal.gupta@gmail.com,9876543218,Noida,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Neha Joshi,neha.joshi@gmail.com,9876543219,Dehradun,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Aditya Rao,aditya.rao@gmail.com,9876543220,Hyderabad,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Ishita Kapoor,ishita.kapoor@gmail.com,9876543221,Gurgaon,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Rahul Khanna,rahul.khanna@gmail.com,9876543222,Lucknow,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Tanya Bose,tanya.bose@gmail.com,9876543223,Kolkata,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16
+Vikram Desai,vikram.desai@gmail.com,9876543224,Surat,user,true,1234,2026-01-11 11:22:16,2026-01-11 11:22:16

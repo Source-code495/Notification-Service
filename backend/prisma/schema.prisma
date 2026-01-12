@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url     = env("DATABASE_URL")
+}
+
+
+
+model User {
+  user_id   Int     @id @default(autoincrement())
+  name      String
+  email     String  @unique
+  phone     String?
+  city      String?
+  role      Role
+  is_active Boolean @default(true)
+  password  String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  preference Preference?
+  logs       NotificationLog[]
+  campaigns  Campaign[]        @relation("CampaignCreator")
+}
+
+model Preference {
+  id            Int  @id @default(autoincrement())
+  offers        Boolean
+  order_updates Boolean
+  newsletter    Boolean
+
+  user_id Int  @unique
+  user    User @relation(fields: [user_id], references: [user_id] , onDelete: Cascade)
+}
+
+model Campaign {
+  campaign_id       Int     @id @default(autoincrement())
+  campaign_name     String
+  notification_type NotificationType
+  campaign_message  String
+  image_url         String?
+  city_filters      Json?
+  status            CampaignStatus @default(draft)
+  created_at        DateTime @default(now())
+  created_by        Int
+
+  creator User @relation("CampaignCreator", fields: [created_by], references: [user_id])
+
+  logs NotificationLog[]
+}
+
+model NotificationLog {
+  id      Int      @id @default(autoincrement())
+  sent_at DateTime @default(now())
+  status  String
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [user_id] , onDelete: Cascade)
+
+  campaign_id Int
+  campaign    Campaign @relation(fields: [campaign_id], references: [campaign_id] , onDelete: Cascade)
+}
+
+enum Role {
+  admin
+  creator
+  viewer
+  user
+}
+
+enum NotificationType {
+  offers
+  order_updates
+  newsletter
+}
+
+enum CampaignStatus {
+  draft
+  sent
+}
