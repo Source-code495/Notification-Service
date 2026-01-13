@@ -5,6 +5,7 @@ import Button from "./ui/Button";
 import Input from "./ui/Input";
 import Alert from "./ui/Alert";
 import { FormField } from "./ui/FormField";
+import { INDIAN_CITIES } from "../constants/cities";
 
 function normalizeCityFilters(value) {
   if (!value) return [];
@@ -159,18 +160,25 @@ export default function CampaignDetailsModal({
               }
             >
               <div className="flex gap-2">
-                <Input
+                <select
                   value={newCity}
                   onChange={(e) => setNewCity(e.target.value)}
-                  placeholder="Add city..."
                   disabled={!editable}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 disabled:opacity-50"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       addCity();
                     }
                   }}
-                />
+                >
+                  <option value="">Select city to add</option>
+                  {INDIAN_CITIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
                 <Button type="button" variant="secondary" onClick={addCity} disabled={!editable}>
                   Add
                 </Button>

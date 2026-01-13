@@ -5,11 +5,14 @@ import Table from "../../components/ui/Table";
 import Alert from "../../components/ui/Alert";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import { Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import CampaignDetailsModal from "../../components/CampaignDetailsModal";
 import { listCampaignsPaged } from "../../services/campaignService";
 import { getErrorMessage } from "../../services/http";
 
 export default function ViewerCampaigns() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [campaigns, setCampaigns] = useState([]);
@@ -103,8 +106,26 @@ export default function ViewerCampaigns() {
         ),
       },
       { key: "status", title: "Status", render: (c) => <Badge color={c.status === "sent" ? "green" : "yellow"}>{c.status}</Badge> },
+      {
+        key: "preview",
+        title: "Preview",
+        render: (c) => (
+          <Button
+            variant="secondary"
+            className="px-2 py-2"
+            onClick={(e) => {
+              e?.stopPropagation?.();
+              navigate(`/viewer/campaigns/${c.campaign_id}/recipients`);
+            }}
+            title="Preview recipients"
+            aria-label="Preview recipients"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        ),
+      },
     ],
-    []
+    [navigate]
   );
 
   const rangeLabel = useMemo(() => {

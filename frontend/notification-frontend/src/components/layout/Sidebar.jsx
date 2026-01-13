@@ -81,6 +81,7 @@ export default function Sidebar({ onLogout }) {
     }
     return [
       { label: "Dashboard", path: "/app", icon: LayoutDashboard },
+      { label: "Notifications", path: "/app/notifications", icon: BellRing },
       { label: "Preferences", path: "/app/preferences", icon: BarChart3 },
       { label: "Account Settings", path: "/account", icon: Settings },
     ];

@@ -24,3 +24,9 @@ export async function updateCampaign(campaignId, payload) {
   const { data } = await http.put(`/campaigns/${campaignId}`, payload);
   return data;
 }
+
+export async function getCampaignRecipients(campaignId, params) {
+  const { data } = await http.get(`/campaigns/${campaignId}/recipients`, { params });
+  return data;
+}
+

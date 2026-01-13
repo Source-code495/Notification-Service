@@ -3,7 +3,7 @@ import prisma from "../config/prisma.js";
 // GET USER PREFERENCES
 export const getPreferences = async (req, res) => {
   const userId = parseInt(req.params.userId);
-
+  
   try {
     const prefs = await prisma.preference.findUnique({
       where: { user_id: userId },
@@ -23,6 +23,12 @@ export const getPreferences = async (req, res) => {
 export const updatePreferences = async (req, res) => {
   const userId = parseInt(req.params.userId);
   const { offers, order_updates, newsletter } = req.body;
+
+  // console.log(req.user.userId, userId);
+  
+  if(req.user.userId !== userId){
+    return  res.status(403).json({ message: "Forbidden" });
+  }
 
   try {
     const existing = await prisma.preference.findUnique({

@@ -4,6 +4,7 @@ import StatCard from "../../components/ui/StatCard";
 import Alert from "../../components/ui/Alert";
 import { useAuth } from "../../context/AuthContext";
 import { getPreferences } from "../../services/preferenceService";
+import { getMyStats } from "../../services/logService";
 import { getErrorMessage } from "../../services/http";
 
 export default function UserDashboard() {
@@ -11,6 +12,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [prefs, setPrefs] = useState(null);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -18,9 +20,13 @@ export default function UserDashboard() {
       setLoading(true);
       setError("");
       try {
-        const p = await getPreferences(userId);
+        const [p, s] = await Promise.all([
+            getPreferences(userId),
+            getMyStats()
+        ]);
         if (!mounted) return;
         setPrefs(p);
+        setStats(s);
       } catch (err) {
         if (!mounted) return;
         setError(getErrorMessage(err));
@@ -38,10 +44,17 @@ export default function UserDashboard() {
       <PageHeader title="User Dashboard" subtitle="Manage your notification preferences." />
       {error ? <Alert type="error">{error}</Alert> : null}
 
+      <div className="grid gap-4 md:grid-cols-4 mb-4">
+        <StatCard label="Total Notifications" value={loading ? "..." : stats?.total ?? 0} />
+        <StatCard label="Offers" value={loading ? "..." : stats?.breakdown?.offers ?? 0} />
+        <StatCard label="Order Updates" value={loading ? "..." : stats?.breakdown?.order_updates ?? 0} />
+        <StatCard label="Newsletters" value={loading ? "..." : stats?.breakdown?.newsletter ?? 0} />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Offers" value={loading ? "..." : prefs?.offers ? "On" : "Off"} />
-        <StatCard label="Order Updates" value={loading ? "..." : prefs?.order_updates ? "On" : "Off"} />
-        <StatCard label="Newsletter" value={loading ? "..." : prefs?.newsletter ? "On" : "Off"} />
+        <StatCard label="Offers Pref" value={loading ? "..." : prefs?.offers ? "On" : "Off"} />
+        <StatCard label="Order Pref" value={loading ? "..." : prefs?.order_updates ? "On" : "Off"} />
+        <StatCard label="Newsletter Pref" value={loading ? "..." : prefs?.newsletter ? "On" : "Off"} />
       </div>
 
       <div className="mt-4 text-sm text-slate-600 dark:text-slate-300">

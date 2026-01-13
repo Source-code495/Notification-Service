@@ -11,6 +11,8 @@ import { useAuth } from "../context/AuthContext";
 import { getErrorMessage } from "../services/http";
 import { changeMyPassword, getMe, updateMe } from "../services/userService";
 import { cn } from "../lib/utils";
+import {updatePreferences } from "../services/preferenceService";
+import { INDIAN_CITIES } from "../constants/cities";
 
 function formatDate(dateValue) {
   if (!dateValue) return "—";
@@ -35,6 +37,10 @@ export default function AccountSettings() {
   }, [role]);
 
   const [tab, setTab] = useState("profile");
+
+  const [offers, setOffers] = useState(false);
+  const [orderUpdates, setOrderUpdates] = useState(false);
+  const [newsletter, setNewsletter] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -65,6 +71,9 @@ export default function AccountSettings() {
       setEmail(data?.email || "");
       setPhone(data?.phone || "");
       setCity(data?.city || "");
+      setOffers(!!data?.preference?.offers);
+      setOrderUpdates(!!data?.preference?.order_updates);
+      setNewsletter(!!data?.preference?.newsletter);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -84,7 +93,17 @@ export default function AccountSettings() {
 
     try {
       const updated = await updateMe({ name, phone, city });
-      setMe(updated);
+
+const prefUpdated = await updatePreferences(me.user_id, {
+  offers,
+  order_updates: orderUpdates,
+  newsletter,
+});
+
+setMe({
+  ...updated,
+  preference: prefUpdated
+});
       setEditing(false);
       setSuccess("Profile updated successfully.");
     } catch (err) {
@@ -183,7 +202,9 @@ export default function AccountSettings() {
             </button>
           </div>
 
-          <div className="flex items-center justify-end gap-2">{activeBadge}</div>
+          <div className="flex items-center justify-end gap-2">
+            {activeBadge}
+          </div>
         </div>
 
         {/* Body */}
@@ -203,8 +224,12 @@ export default function AccountSettings() {
                   </div>
 
                   <div className="text-center">
-                    <div className="text-sm font-semibold text-slate-100">{me?.name || "—"}</div>
-                    <div className="text-xs text-slate-400">{me?.role ? String(me.role).toUpperCase() : "—"}</div>
+                    <div className="text-sm font-semibold text-slate-100">
+                      {me?.name || "—"}
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {me?.role ? String(me.role).toUpperCase() : "—"}
+                    </div>
                   </div>
                 </div>
 
@@ -235,13 +260,64 @@ export default function AccountSettings() {
                   </FormField>
 
                   <FormField label="City">
-                    <Input
+                    <select
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       disabled={!editing}
-                      placeholder="e.g. Karachi"
-                    />
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 disabled:opacity-50"
+                    >
+                      <option value="">Select a city</option>
+                      {INDIAN_CITIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
+
+                  <div className="pt-4">
+                    <div className="mb-2 text-sm font-semibold text-slate-100">
+                      Notification Preferences
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                        <span className="text-sm text-slate-300">
+                          Offers & Promotions
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={offers}
+                          onChange={(e) => setOffers(e.target.checked)}
+                          disabled={!editing}
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                        <span className="text-sm text-slate-300">
+                          Order Updates
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={orderUpdates}
+                          onChange={(e) => setOrderUpdates(e.target.checked)}
+                          disabled={!editing}
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                        <span className="text-sm text-slate-300">
+                          Newsletter
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={newsletter}
+                          onChange={(e) => setNewsletter(e.target.checked)}
+                          disabled={!editing}
+                        />
+                      </label>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-3">
@@ -295,6 +371,9 @@ export default function AccountSettings() {
                             setCity(me?.city || "");
                             setError("");
                             setSuccess("");
+                            setOffers(me?.preference?.offers || false);
+                            setOrderUpdates(me?.preference?.order_updates || false);
+                            setNewsletter(me?.preference?.newsletter || false);
                           }}
                         >
                           Cancel
@@ -313,9 +392,12 @@ export default function AccountSettings() {
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-100">Security Settings</div>
+                    <div className="text-sm font-semibold text-slate-100">
+                      Security Settings
+                    </div>
                     <div className="text-xs text-slate-400">
-                      Regularly update your password to maintain account security
+                      Regularly update your password to maintain account
+                      security
                     </div>
                   </div>
                 </div>

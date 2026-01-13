@@ -26,9 +26,12 @@ import ViewerLogs from "./pages/viewer/ViewerLogs";
 
 import AccountSettings from "./pages/AccountSettings";
 
+import CampaignRecipients from "./pages/CampaignRecipients";
+
 import UserDashboard from "./pages/user/UserDashboard";
 import UserPreferences from "./pages/user/UserPreferences";
 import UserProfile from "./pages/user/UserProfile";
+import UserNotifications from "./pages/user/UserNotifications";
 
 function App() {
   return (
@@ -51,6 +54,7 @@ function App() {
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="campaigns" element={<AdminCampaigns />} />
+                <Route path="campaigns/:campaignId/recipients" element={<CampaignRecipients />} />
                 <Route path="logs" element={<AdminLogs />} />
                 <Route path="create-staff" element={<AdminCreateStaff />} />
               </Route>
@@ -62,6 +66,7 @@ function App() {
                 <Route index element={<CreatorDashboard />} />
                 <Route path="users" element={<CreatorUsers />} />
                 <Route path="campaigns" element={<CreatorCampaigns />} />
+                <Route path="campaigns/:campaignId/recipients" element={<CampaignRecipients />} />
                 <Route path="logs" element={<CreatorLogs />} />
               </Route>
 
@@ -71,6 +76,7 @@ function App() {
               >
                 <Route index element={<ViewerDashboard />} />
                 <Route path="campaigns" element={<ViewerCampaigns />} />
+                <Route path="campaigns/:campaignId/recipients" element={<CampaignRecipients />} />
                 <Route path="logs" element={<ViewerLogs />} />
               </Route>
 
@@ -81,6 +87,7 @@ function App() {
                 <Route index element={<UserDashboard />} />
                 <Route path="preferences" element={<UserPreferences />} />
                 <Route path="profile" element={<UserProfile />} />
+                <Route path="notifications" element={<UserNotifications />} />
               </Route>
             </Route>
           </Route>

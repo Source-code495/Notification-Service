@@ -2,6 +2,7 @@ import express from "express";
 import {
   createCampaign,
   getCampaigns,
+  getCampaignRecipients,
   sendCampaign,
   updateCampaign,
 } from "../controllers/campaignController.js";
@@ -13,6 +14,12 @@ const router = express.Router();
 
 router.post("/", verifyToken, allowRoles("admin", "creator"), createCampaign);
 router.get("/", verifyToken,allowRoles("admin", "creator", "viewer"),getCampaigns);
+router.get(
+  "/:campaignId/recipients",
+  verifyToken,
+  allowRoles("admin", "creator", "viewer"),
+  getCampaignRecipients
+);
 router.post("/send", verifyToken, allowRoles("admin", "creator"), sendCampaign);
 router.put("/:campaignId", verifyToken, allowRoles("admin", "creator"), updateCampaign);
 

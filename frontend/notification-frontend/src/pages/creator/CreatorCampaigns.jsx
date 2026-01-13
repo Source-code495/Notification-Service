@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/ui/PageHeader";
 import { Card } from "../../components/ui/Card";
 import Table from "../../components/ui/Table";
@@ -15,6 +16,8 @@ import {
 } from "../../services/campaignService";
 import { getErrorMessage } from "../../services/http";
 import CampaignDetailsModal from "../../components/CampaignDetailsModal";
+import { Eye } from "lucide-react";
+import { INDIAN_CITIES } from "../../constants/cities";
 
 const notificationTypes = [
   { value: "offers", label: "Offers" },
@@ -23,6 +26,7 @@ const notificationTypes = [
 ];
 
 export default function CreatorCampaigns() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -173,30 +177,45 @@ export default function CreatorCampaigns() {
         key: "actions",
         title: "Actions",
         render: (c) => (
-          <Button
-            disabled={saving || c.status === "sent"}
-            onClick={async (e) => {
-              e?.stopPropagation?.();
-              setSaving(true);
-              setError("");
-              setSuccess("");
-              try {
-                const res = await sendCampaign(c.campaign_id);
-                setSuccess(`${res?.message || "Campaign sent"} (recipients: ${res?.recipients ?? "?"})`);
-                await fetchPage();
-              } catch (err) {
-                setError(getErrorMessage(err));
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {c.status === "sent" ? "Sent" : "Send"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="px-2"
+              title="Preview recipients"
+              aria-label="Preview recipients"
+              onClick={(e) => {
+                e?.stopPropagation?.();
+                navigate(`/creator/campaigns/${c.campaign_id}/recipients`);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+
+            <Button
+              disabled={saving || c.status === "sent"}
+              onClick={async (e) => {
+                e?.stopPropagation?.();
+                setSaving(true);
+                setError("");
+                setSuccess("");
+                try {
+                  const res = await sendCampaign(c.campaign_id);
+                  setSuccess(`${res?.message || "Campaign sent"} (recipients: ${res?.recipients ?? "?"})`);
+                  await fetchPage();
+                } catch (err) {
+                  setError(getErrorMessage(err));
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {c.status === "sent" ? "Sent" : "Send"}
+            </Button>
+          </div>
         ),
       },
     ],
-    [saving, fetchPage]
+    [saving, fetchPage, navigate]
   );
 
   async function onCreate(e) {
@@ -269,17 +288,24 @@ export default function CreatorCampaigns() {
               }
             >
               <div className="flex gap-2">
-                <Input
+                <select 
                   value={newCity}
                   onChange={(e) => setNewCity(e.target.value)}
-                  placeholder="Add city..."
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       addCityToForm();
                     }
                   }}
-                />
+                >
+                  <option value="">Select city to add</option>
+                  {INDIAN_CITIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
                 <Button type="button" variant="secondary" onClick={addCityToForm}>
                   Add
                 </Button>

@@ -17,6 +17,7 @@ import {
   getMe
 } from "../../services/userService";
 import { getErrorMessage } from "../../services/http";
+import { INDIAN_CITIES } from "../../constants/cities";
 // import { use } from "react";
 
 export default function CreatorUsers() {
@@ -47,6 +48,7 @@ export default function CreatorUsers() {
     email: "",
     password: "",
     role: "viewer",
+    phone: "",
     city: "",
   });
 
@@ -169,10 +171,11 @@ export default function CreatorUsers() {
         email: newUser.email,
         password: newUser.password,
         role: newUser.role,
+        phone: newUser.phone,
         city: newUser.city || null,
       });
       setSuccess("User created");
-      setNewUser({ name: "", email: "", password: "", role: "viewer", city: "" });
+      setNewUser({ name: "", email: "", password: "", role: "viewer", phone:"", city: "" });
       setPage(1);
       await fetchPage({ nextPage: 1 });
       await loadOptions();
@@ -225,7 +228,7 @@ export default function CreatorUsers() {
       {error ? <Alert type="error">{error}</Alert> : null}
       {success ? <div className="mt-2"><Alert type="success">{success}</Alert></div> : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3 items-start">
         <Card title="Create User">
           <form className="space-y-3" onSubmit={onCreate}>
             <FormField label="Name">
@@ -247,8 +250,22 @@ export default function CreatorUsers() {
                 <option value="user">user</option>
               </select>
             </FormField>
+            <FormField label="Phone (optional)">
+              <Input value={newUser.phone} onChange={(e) => setNewUser((p) => ({ ...p, phone: e.target.value }))} />
+            </FormField>
             <FormField label="City (optional)">
-              <Input value={newUser.city} onChange={(e) => setNewUser((p) => ({ ...p, city: e.target.value }))} />
+            <select
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+                value={newUser.city}
+                onChange={(e) => setNewUser((p) => ({ ...p, city: e.target.value }))}
+              >
+                <option value="">Select a city</option>
+                {INDIAN_CITIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </FormField>
             <Button type="submit" disabled={saving} className="w-full">
               {saving ? "Saving..." : "Create"}

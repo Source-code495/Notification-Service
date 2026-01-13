@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { INDIAN_CITIES, isValidCity } from "../constants/cities.js";
 
 const normalizeCityFilters = (value) => {
   if (value == null) return null;
@@ -22,6 +23,13 @@ const normalizeCityFilters = (value) => {
   const normalized = raw
     .map((c) => (typeof c === "string" ? c.trim() : ""))
     .filter((c) => c.length > 0);
+
+  // Validate all cities against hardcoded list
+  for (const city of normalized) {
+    if (!isValidCity(city)) {
+      throw new Error(`Invalid city: "${city}". City must be one of: ${INDIAN_CITIES.join(", ")}`);
+    }
+  }
 
   // Remove duplicates (case-insensitive) while preserving the first spelling.
   const seen = new Set();
@@ -98,10 +106,7 @@ export const getCampaigns = async (req, res) => {
 
     const where = { AND: [] };
 
-    // Creator role only sees their campaigns.
-    if (req.user?.role === "creator") {
-      where.AND.push({ created_by: req.user.userId });
-    }
+    // NOTE: Creators can see all campaigns (including admin-created).
 
     if (q) {
       where.AND.push({
@@ -188,12 +193,17 @@ export const updateCampaign = async (req, res) => {
 
     const existing = await prisma.campaign.findUnique({
       where: { campaign_id },
-      select: { status: true },
+      select: { status: true, created_by: true },
     });
 
     if (!existing) {
       return res.status(404).json({ message: "Campaign not found" });
     }
+
+    // Creator can only edit their own campaigns.
+    // if (req.user?.role === "creator" && existing.created_by !== req.user.userId) {
+    //   return res.status(403).json({ message: "Forbidden" });
+    // }
 
     if (existing.status !== "draft") {
       return res
@@ -266,6 +276,11 @@ export const sendCampaign = async (req, res) => {
       return res.status(404).json({ message: "Campaign not found" });
     }
 
+    // Creator can only send their own campaigns.
+    if (req.user?.role === "creator" && campaign.created_by !== req.user.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const cityFilters = Array.isArray(campaign.city_filters) ? campaign.city_filters : [];
     const hasCityFilters = cityFilters.length > 0;
 
@@ -310,5 +325,177 @@ export const sendCampaign = async (req, res) => {
       message: "Campaign sending failed. No data was changed.",
       error: err.message,
     });
+  }
+};
+
+// GET CAMPAIGN RECIPIENTS (preview for draft / delivery for sent)
+export const getCampaignRecipients = async (req, res) => {
+  try {
+    const campaign_id = Number(req.params.campaignId);
+    if (!Number.isFinite(campaign_id)) {
+      return res.status(400).json({ message: "Invalid campaign id" });
+    }
+
+    const pageRaw = req.query.page;
+    const limitRaw = req.query.limit;
+    const q = String(req.query.q || "").trim();
+    const statusFilter = String(req.query.status || "all").trim();
+    const city = String(req.query.city || "").trim();
+    const role = String(req.query.role || "all").trim();
+
+    const page = Math.max(1, parseInt(pageRaw || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(5, parseInt(limitRaw || "10", 10) || 10));
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { campaign_id },
+      select: {
+        campaign_id: true,
+        campaign_name: true,
+        notification_type: true,
+        status: true,
+        city_filters: true,
+        created_by: true,
+        created_at: true,
+      },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    const cityFilters = Array.isArray(campaign.city_filters) ? campaign.city_filters : [];
+    const hasCityFilters = cityFilters.length > 0;
+
+    if (campaign.status === "sent") {
+      const where = { AND: [{ campaign_id }] };
+
+      if (statusFilter && statusFilter !== "all") {
+        where.AND.push({ status: statusFilter });
+      }
+
+      if (city) {
+        where.AND.push({ user: { is: { city: { contains: city } } } });
+      }
+
+      if (role && role !== "all") {
+        where.AND.push({ user: { is: { role } } });
+      }
+
+      if (q) {
+        where.AND.push({
+          OR: [
+            { user: { is: { name: { contains: q } } } },
+            { user: { is: { email: { contains: q } } } },
+          ],
+        });
+      }
+
+      const total = await prisma.notificationLog.count({ where });
+      const totalPages = total === 0 ? 1 : Math.ceil(total / limit);
+      const safePage = Math.min(page, totalPages);
+      const skip = (safePage - 1) * limit;
+
+      const items = await prisma.notificationLog.findMany({
+        where,
+        orderBy: [{ sent_at: "desc" }, { id: "desc" }],
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              name: true,
+              email: true,
+              city: true,
+              role: true,
+              is_active: true,
+            },
+          },
+        },
+      });
+
+      return res.json({
+        campaign,
+        mode: "sent",
+        items: items.map((l) => ({
+          user: l.user,
+          status: l.status,
+          sent_at: l.sent_at,
+        })),
+        meta: {
+          page: safePage,
+          limit,
+          total,
+          totalPages,
+          hasPrev: safePage > 1,
+          hasNext: safePage < totalPages,
+        },
+      });
+    }
+
+    // Draft (or any non-sent): preview eligible recipients.
+    const where = { AND: [{ is_active: true }] };
+
+    if (hasCityFilters) {
+      where.AND.push({ city: { in: cityFilters } });
+    }
+
+    // Respect campaign preference flag.
+    where.AND.push({ preference: { [campaign.notification_type]: true } });
+
+    if (city) {
+      where.AND.push({ city: { contains: city } });
+    }
+
+    if (role && role !== "all") {
+      where.AND.push({ role });
+    }
+
+    if (q) {
+      where.AND.push({
+        OR: [{ name: { contains: q } }, { email: { contains: q } }],
+      });
+    }
+
+
+    const total = await prisma.user.count({ where });
+    const totalPages = total === 0 ? 1 : Math.ceil(total / limit);
+    const safePage = Math.min(page, totalPages);
+    const skip = (safePage - 1) * limit;
+
+    const users = await prisma.user.findMany({
+      where,
+      orderBy: [{ created_at: "desc" }, { user_id: "desc" }],
+      skip,
+      take: limit,
+      select: {
+        user_id: true,
+        name: true,
+        email: true,
+        city: true,
+        role: true,
+        is_active: true,
+      },
+    });
+
+    res.json({
+      campaign,
+      mode: "draft",
+      items: users.map((u) => ({
+        user: u,
+        status: "pending",
+        sent_at: null,
+      })),
+      meta: {
+        page: safePage,
+        limit,
+        total,
+        totalPages,
+        hasPrev: safePage > 1,
+        hasNext: safePage < totalPages,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

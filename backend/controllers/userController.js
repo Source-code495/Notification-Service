@@ -2,6 +2,7 @@ import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
 import fs from "fs";
 import csv from "csv-parser";
+import { INDIAN_CITIES, isValidCity } from "../constants/cities.js";
 
 // CREATE USER
 export const createUser = async (req, res) => {
@@ -13,6 +14,13 @@ export const createUser = async (req, res) => {
       if(req.user.role === "creator" && role === "admin"){
         return res.status(403).json({ message: "Forbidden" });
       }
+
+    // Validate city if provided
+    if (city && !isValidCity(city)) {
+      return res.status(400).json({ 
+        message: `Invalid city. City must be one of: ${INDIAN_CITIES.join(", ")}` 
+      });
+    }
     
     const user = await prisma.user.create({
       data: {
@@ -21,7 +29,7 @@ export const createUser = async (req, res) => {
         password: hashedPassword,
         role,
         phone,
-        city,
+        city: city ? city.trim() : null,
       },
     });
 
@@ -237,20 +245,9 @@ export const getCreatorUsers = async (req, res) => {
 // GET USER FILTER OPTIONS (roles + distinct cities)
 export const getUserOptions = async (req, res) => {
   try {
-    const citiesRaw = await prisma.user.findMany({
-      distinct: ["city"],
-      select: { city: true },
-      where: { city: { not: null } },
-    });
-
-    const cities = citiesRaw
-      .map((r) => (r.city || "").trim())
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-
     res.json({
       roles: ["admin", "creator", "viewer", "user"],
-      cities,
+      cities: INDIAN_CITIES,
       statuses: ["all", "active", "inactive"],
       preferences: ["any", "offers", "order_updates", "newsletter"],
     });
@@ -261,23 +258,9 @@ export const getUserOptions = async (req, res) => {
 
 export const getCreatorUserOptions = async (req, res) => {
   try {
-    const citiesRaw = await prisma.user.findMany({
-      distinct: ["city"],
-      select: { city: true },
-      where: { 
-                city: { not: null },
-                role : {not : 'admin'}
-            },
-    });
-
-    const cities = citiesRaw
-      .map((r) => (r.city || "").trim())
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-
     res.json({
       roles: [ "creator", "viewer", "user"],
-      cities,
+      cities: INDIAN_CITIES,
       statuses: ["all", "active", "inactive"],
       preferences: ["any", "offers", "order_updates", "newsletter"],
     });
@@ -304,6 +287,13 @@ export const getMe = async (req, res) => {
         is_active: true,
         created_at: true,
         updated_at: true,
+        preference: {
+          select: {
+            offers: true,
+            order_updates: true,
+            newsletter: true,
+          },
+        },
       },
     });
 
@@ -338,6 +328,11 @@ export const updateMe = async (req, res) => {
 
     if (city !== undefined) {
       const trimmed = String(city).trim();
+      if (trimmed && !isValidCity(trimmed)) {
+        return res.status(400).json({ 
+          message: `Invalid city. City must be one of: ${INDIAN_CITIES.join(", ")}` 
+        });
+      }
       data.city = trimmed ? trimmed : null;
     }
 
@@ -419,6 +414,11 @@ export const updateUser = async (req, res) => {
     const data = {};
 
     if (city !== undefined) {
+      if (city !== "" && !isValidCity(city)) {
+        return res.status(400).json({ 
+          message: `Invalid city. City must be one of: ${INDIAN_CITIES.join(", ")}` 
+        });
+      }
       data.city = city === "" ? null : city;
     }
 
