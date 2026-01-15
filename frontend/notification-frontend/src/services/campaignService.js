@@ -20,6 +20,11 @@ export async function sendCampaign(campaign_id) {
   return data;
 }
 
+export async function scheduleCampaign(campaign_id, scheduled_at) {
+  const { data } = await http.post("/campaigns/schedule", { campaign_id, scheduled_at });
+  return data;
+}
+
 export async function updateCampaign(campaignId, payload) {
   const { data } = await http.put(`/campaigns/${campaignId}`, payload);
   return data;

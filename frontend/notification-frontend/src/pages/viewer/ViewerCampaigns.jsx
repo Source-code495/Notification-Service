@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import CampaignDetailsModal from "../../components/CampaignDetailsModal";
 import { listCampaignsPaged } from "../../services/campaignService";
 import { getErrorMessage } from "../../services/http";
+import { formatDateTimeFull } from "../../utils/format";
 
 export default function ViewerCampaigns() {
   const navigate = useNavigate();
@@ -105,7 +106,28 @@ export default function ViewerCampaigns() {
           </div>
         ),
       },
-      { key: "status", title: "Status", render: (c) => <Badge color={c.status === "sent" ? "green" : "yellow"}>{c.status}</Badge> },
+      {
+        key: "status",
+        title: "Status",
+        render: (c) => (
+          <Badge
+            color={
+              c.status === "sent" ? "green" : c.status === "draft" ? "yellow" : "blue"
+            }
+          >
+            {c.status}
+          </Badge>
+        ),
+      },
+      {
+        key: "scheduled_at",
+        title: "Scheduled",
+        render: (c) => (
+          <span className="text-xs text-slate-600 dark:text-slate-300">
+            {c?.scheduled_at ? formatDateTimeFull(c.scheduled_at) : "—"}
+          </span>
+        ),
+      },
       {
         key: "preview",
         title: "Preview",
@@ -155,8 +177,6 @@ export default function ViewerCampaigns() {
           >
             <option value="all">All types</option>
             <option value="offers">Offers</option>
-            <option value="order_updates">Order Updates</option>
-            <option value="newsletter">Newsletter</option>
           </select>
           <select
             className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
@@ -165,6 +185,8 @@ export default function ViewerCampaigns() {
           >
             <option value="all">All status</option>
             <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="sending">Sending</option>
             <option value="sent">Sent</option>
           </select>
           <input

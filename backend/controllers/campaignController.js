@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { INDIAN_CITIES, isValidCity } from "../constants/cities.js";
+import { deliverCampaignNow } from "../services/campaignDeliveryService.js";
 
 const normalizeCityFilters = (value) => {
   if (value == null) return null;
@@ -57,8 +58,8 @@ export const createCampaign = async (req, res) => {
     if(campaign_name  == null || campaign_name.trim() === "" ){
         return res.status(400).json({ message: "Campaign name is required" });
     }
-    if( notification_type !== "offers"  && notification_type !== "order_updates" && notification_type !== "newsletter" ){    
-        return res.status(400).json({ message: "Invalid notification type" });
+    if (notification_type !== "offers") {
+      return res.status(400).json({ message: "Campaigns can only be of type offers" });
     }
     if(!campaign_message || campaign_message.trim() === "" ){
         return  res.status(400).json({ message: "Campaign message is required" });
@@ -68,7 +69,7 @@ export const createCampaign = async (req, res) => {
       return res.status(400).json({ message: "image_url must be a string" });
     }
 
-    console.log(req.body);
+
     const campaign = await prisma.campaign.create({
       data: {
         campaign_name,
@@ -118,6 +119,9 @@ export const getCampaigns = async (req, res) => {
     }
 
     if (type && type !== "all") {
+      if (type !== "offers") {
+        return res.status(400).json({ message: "Invalid campaign type" });
+      }
       where.AND.push({ notification_type: type });
     }
 
@@ -186,10 +190,7 @@ export const getCampaigns = async (req, res) => {
 // UPDATE CAMPAIGN (edit cities/image/message/name)
 export const updateCampaign = async (req, res) => {
   try {
-    const campaign_id = Number(req.params.campaignId);
-    if (!Number.isFinite(campaign_id)) {
-      return res.status(400).json({ message: "Invalid campaign id" });
-    }
+    const campaign_id = req.params.campaignId;
 
     const existing = await prisma.campaign.findUnique({
       where: { campaign_id },
@@ -201,9 +202,9 @@ export const updateCampaign = async (req, res) => {
     }
 
     // Creator can only edit their own campaigns.
-    // if (req.user?.role === "creator" && existing.created_by !== req.user.userId) {
-    //   return res.status(403).json({ message: "Forbidden" });
-    // }
+    if (req.user?.role === "creator" && existing.created_by !== req.user.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
 
     if (existing.status !== "draft") {
       return res
@@ -276,48 +277,32 @@ export const sendCampaign = async (req, res) => {
       return res.status(404).json({ message: "Campaign not found" });
     }
 
+    if (campaign.status !== "draft") {
+      return res.status(400).json({
+        message:
+          campaign.status === "scheduled"
+            ? "Campaign is scheduled and cannot be sent immediately"
+            : "Only draft campaigns can be sent",
+      });
+    }
+
     // Creator can only send their own campaigns.
     if (req.user?.role === "creator" && campaign.created_by !== req.user.userId) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const cityFilters = Array.isArray(campaign.city_filters) ? campaign.city_filters : [];
-    const hasCityFilters = cityFilters.length > 0;
-
-    const users = await prisma.user.findMany({
-      where: {
-        is_active: true,
-        ...(hasCityFilters ? { city: { in: cityFilters } } : {}),
-        preference: {
-          [campaign.notification_type]: true,
-        },
-      },
+    const result = await deliverCampaignNow({
+      campaign_id,
+      allowedStatuses: ["draft"],
     });
-      
-    if (users.length === 0) {
+
+    if (result.recipients === 0) {
       return res.json({ message: "No eligible users found", recipients: 0 });
     }
 
-    await prisma.$transaction([
-      ...users.map((user) =>
-        prisma.notificationLog.create({
-          data: {
-            user_id: user.user_id,
-            campaign_id: campaign.campaign_id,
-            status: "success",
-            sent_at: new Date(),
-          },
-        })
-      ),
-      prisma.campaign.update({
-        where: { campaign_id },
-        data: { status: "sent" },
-      }),
-    ]);
-
     res.json({
       message: "Campaign sent successfully",
-      recipients: users.length,
+      recipients: result.recipients,
     });
   } catch (err) {
     console.error(err);
@@ -328,13 +313,66 @@ export const sendCampaign = async (req, res) => {
   }
 };
 
+// SCHEDULE CAMPAIGN (no logs created until cron triggers)
+export const scheduleCampaign = async (req, res) => {
+  try {
+    const { campaign_id } = req.body;
+    const scheduledAtRaw =
+      req.body.scheduled_at ?? req.body.scheduledAt ?? req.body.scheduledTime;
+
+    if (!campaign_id) {
+      return res.status(400).json({ message: "campaign_id is required" });
+    }
+
+    if (!scheduledAtRaw) {
+      return res.status(400).json({ message: "scheduled_at is required" });
+    }
+
+    const scheduled_at = new Date(scheduledAtRaw);
+    if (Number.isNaN(scheduled_at.getTime())) {
+      return res.status(400).json({ message: "scheduled_at must be a valid date" });
+    }
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { campaign_id },
+      select: { campaign_id: true, status: true, created_by: true },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    if (campaign.status !== "draft") {
+      return res.status(400).json({ message: "Only draft campaigns can be scheduled" });
+    }
+    // Creator can only schedule their own campaigns.
+    if (req.user?.role === "creator" && campaign.created_by !== req.user.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const updated = await prisma.campaign.update({
+      where: { campaign_id },
+      data: {
+        status: "scheduled",
+        scheduled_at,
+      },
+      include: {
+        creator: { select: { user_id: true, name: true, email: true } },
+      },
+    });
+
+    res.json({
+      message: "Campaign scheduled successfully",
+      campaign: updated,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET CAMPAIGN RECIPIENTS (preview for draft / delivery for sent)
 export const getCampaignRecipients = async (req, res) => {
   try {
-    const campaign_id = Number(req.params.campaignId);
-    if (!Number.isFinite(campaign_id)) {
-      return res.status(400).json({ message: "Invalid campaign id" });
-    }
+    const campaign_id = req.params.campaignId;
 
     const pageRaw = req.query.page;
     const limitRaw = req.query.limit;
@@ -418,9 +456,11 @@ export const getCampaignRecipients = async (req, res) => {
         campaign,
         mode: "sent",
         items: items.map((l) => ({
+          id: l.id,
           user: l.user,
           status: l.status,
           sent_at: l.sent_at,
+          channel: l.channel,
         })),
         meta: {
           page: safePage,
@@ -440,8 +480,17 @@ export const getCampaignRecipients = async (req, res) => {
       where.AND.push({ city: { in: cityFilters } });
     }
 
-    // Respect campaign preference flag.
-    where.AND.push({ preference: { [campaign.notification_type]: true } });
+    // Respect campaign preference flags (any enabled channel counts as eligible).
+    if (campaign.notification_type === "offers") {
+      where.AND.push({
+        preference: {
+          OR: [{ offers_push: true }, { offers_email: true }, { offers_sms: true }],
+        },
+      });
+    } else {
+      // Fallback for future types (if ever added back)
+      where.AND.push({ preference: { [campaign.notification_type]: true } });
+    }
 
     if (city) {
       where.AND.push({ city: { contains: city } });
@@ -475,6 +524,13 @@ export const getCampaignRecipients = async (req, res) => {
         city: true,
         role: true,
         is_active: true,
+        preference: {
+          select: {
+            offers_push: true,
+            offers_email: true,
+            offers_sms: true,
+          },
+        },
       },
     });
 
@@ -482,9 +538,21 @@ export const getCampaignRecipients = async (req, res) => {
       campaign,
       mode: "draft",
       items: users.map((u) => ({
-        user: u,
+        user: {
+          user_id: u.user_id,
+          name: u.name,
+          email: u.email,
+          city: u.city,
+          role: u.role,
+          is_active: u.is_active,
+        },
         status: "pending",
         sent_at: null,
+        channels: [
+          ...(u?.preference?.offers_push ? ["push"] : []),
+          ...(u?.preference?.offers_email ? ["email"] : []),
+          ...(u?.preference?.offers_sms ? ["sms"] : []),
+        ],
       })),
       meta: {
         page: safePage,

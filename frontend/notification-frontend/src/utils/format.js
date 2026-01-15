@@ -9,6 +9,23 @@ export function formatDateTime(value) {
   }
 }
 
+export function formatDateTimeFull(value) {
+  if (!value) return "";
+  try {
+    const d = new Date(value);
+    return d.toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(value);
+  }
+}
+
 // Returns YYYY-MM-DD in Asia/Kolkata (lexicographically sortable).
 export function toISTDateKey(value) {
   if (!value) return "";

@@ -3,6 +3,7 @@ import {
   createCampaign,
   getCampaigns,
   getCampaignRecipients,
+  scheduleCampaign,
   sendCampaign,
   updateCampaign,
 } from "../controllers/campaignController.js";
@@ -21,6 +22,12 @@ router.get(
   getCampaignRecipients
 );
 router.post("/send", verifyToken, allowRoles("admin", "creator"), sendCampaign);
+router.post(
+  "/schedule",
+  verifyToken,
+  allowRoles("admin", "creator"),
+  scheduleCampaign
+);
 router.put("/:campaignId", verifyToken, allowRoles("admin", "creator"), updateCampaign);
 
 export default router;

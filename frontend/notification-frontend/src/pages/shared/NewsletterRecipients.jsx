@@ -2,37 +2,37 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-import PageHeader from "../components/ui/PageHeader";
-import { Card } from "../components/ui/Card";
-import Table from "../components/ui/Table";
-import Alert from "../components/ui/Alert";
-import Badge from "../components/ui/Badge";
-import Input from "../components/ui/Input";
-import Button from "../components/ui/Button";
+import PageHeader from "../../components/ui/PageHeader";
+import { Card } from "../../components/ui/Card";
+import Table from "../../components/ui/Table";
+import Alert from "../../components/ui/Alert";
+import Badge from "../../components/ui/Badge";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Button";
 
-import { getCampaignRecipients } from "../services/campaignService";
-import { getErrorMessage } from "../services/http";
-import { formatDateTime, safeUpper } from "../utils/format";
+import { getArticleRecipients } from "../../services/newsletterService";
+import { getErrorMessage } from "../../services/http";
+import { formatDateTime, safeUpper } from "../../utils/format";
 
-function getBackToCampaignsPath(pathname) {
+function getBackToNewslettersPath(pathname) {
   const parts = String(pathname || "")
     .split("/")
     .filter(Boolean);
   const base = parts[0];
   if (!base) return "/";
-  return `/${base}/campaigns`;
+  return `/${base}/newsletters`;
 }
 
-export default function CampaignRecipients() {
-  const { campaignId } = useParams();
+export default function NewsletterRecipients() {
+  const { articleId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const backPath = useMemo(() => getBackToCampaignsPath(location.pathname), [location.pathname]);
+  const backPath = useMemo(() => getBackToNewslettersPath(location.pathname), [location.pathname]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [campaign, setCampaign] = useState(null);
+  const [article, setArticle] = useState(null);
   const [mode, setMode] = useState("draft");
 
   const [rows, setRows] = useState([]);
@@ -57,7 +57,7 @@ export default function CampaignRecipients() {
     setError("");
 
     try {
-      const data = await getCampaignRecipients(campaignId, {
+      const data = await getArticleRecipients(articleId, {
         page: pageToUse,
         limit: limitToUse,
         q: filtersToUse.q,
@@ -66,7 +66,7 @@ export default function CampaignRecipients() {
         status: filtersToUse.status,
       });
 
-      setCampaign(data?.campaign || null);
+      setArticle(data?.article || null);
       setMode(data?.mode || "draft");
       setRows(data?.items || []);
 
@@ -93,7 +93,7 @@ export default function CampaignRecipients() {
   useEffect(() => {
     void fetchPage({ nextPage: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId]);
+  }, [articleId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -192,14 +192,14 @@ export default function CampaignRecipients() {
     []
   );
 
-  const title = campaign?.campaign_name
-    ? `Recipients • ${campaign.campaign_name}`
-    : "Campaign Recipients";
+  const title = article?.title
+    ? `Recipients • ${article?.newsletter?.title ? `${article.newsletter.title} / ` : ""}${article.title}`
+    : "Article Recipients";
 
   const subtitle =
     mode === "sent"
-      ? "Users who received this campaign (with delivery status)."
-      : "Users who will receive this campaign when sent (preview for draft).";
+      ? "Users who received this article (with delivery status)."
+      : "Users who will receive this article when published (preview for draft).";
 
   return (
     <div>
@@ -208,13 +208,13 @@ export default function CampaignRecipients() {
       {error ? <Alert type="error">{error}</Alert> : null}
 
       <div className="mb-3 flex items-center justify-between gap-2">
-        <Button variant="secondary" onClick={() => navigate(backPath)} className="!p-2" aria-label="Back to Campaigns" title="Back to Campaigns">
+        <Button variant="secondary" onClick={() => navigate(backPath)} className="!p-2" aria-label="Back to Newsletters" title="Back to Newsletters">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        {campaign ? (
+        {article ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Badge color={campaign.status === "sent" ? "green" : "yellow"}>{campaign.status}</Badge>
-            <Badge color="blue">{campaign.notification_type}</Badge>
+            <Badge color={article.status === "sent" ? "green" : "yellow"}>{article.status === "sent" ? "published" : "draft"}</Badge>
+            <Badge color="blue">newsletter article</Badge>
           </div>
         ) : null}
       </div>
@@ -250,7 +250,7 @@ export default function CampaignRecipients() {
             value={filters.status}
             disabled={mode !== "sent"}
             onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
-            title={mode !== "sent" ? "Status filter is only available for sent campaigns" : undefined}
+            title={mode !== "sent" ? "Status filter is only available for sent newsletters" : undefined}
           >
             <option value="all">All status</option>
             {statusOptions.map((s) => (

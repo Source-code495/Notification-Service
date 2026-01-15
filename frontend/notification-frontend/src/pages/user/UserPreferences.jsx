@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../components/ui/PageHeader";
 import { Card } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -7,19 +7,51 @@ import { useAuth } from "../../context/AuthContext";
 import { getPreferences, updatePreferences } from "../../services/preferenceService";
 import { getErrorMessage } from "../../services/http";
 
-function ToggleRow({ label, checked, onChange, hint }) {
+function ChannelRow({ label, hint, value, onChange }) {
+  const enabledCount = useMemo(() => {
+    const v = value || {};
+    return [v.sms, v.email, v.push].filter(Boolean).length;
+  }, [value]);
+
   return (
     <label className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950">
       <div>
         <div className="font-medium text-slate-900 dark:text-slate-50">{label}</div>
         {hint ? <div className="text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{enabledCount} channel(s) enabled</div>
       </div>
-      <input
-        type="checkbox"
-        className="mt-1 h-5 w-5"
-        checked={!!checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
+
+      <div className="mt-1 flex items-center gap-3">
+        <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={!!value?.sms}
+            onChange={(e) => onChange({ ...value, sms: e.target.checked })}
+          />
+          SMS
+        </label>
+
+        <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={!!value?.email}
+            onChange={(e) => onChange({ ...value, email: e.target.checked })}
+          />
+          Email
+        </label>
+
+        <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={!!value?.push}
+            onChange={(e) => onChange({ ...value, push: e.target.checked })}
+          />
+          Push
+        </label>
+      </div>
     </label>
   );
 }
@@ -31,9 +63,9 @@ export default function UserPreferences() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [offers, setOffers] = useState(false);
-  const [orderUpdates, setOrderUpdates] = useState(false);
-  const [newsletter, setNewsletter] = useState(false);
+  const [offers, setOffers] = useState({ sms: false, email: false, push: false });
+  const [orderUpdates, setOrderUpdates] = useState({ sms: false, email: false, push: false });
+  const [newsletter, setNewsletter] = useState({ sms: false, email: false, push: false });
 
   useEffect(() => {
     let mounted = true;
@@ -43,9 +75,21 @@ export default function UserPreferences() {
       try {
         const prefs = await getPreferences(userId);
         if (!mounted) return;
-        setOffers(!!prefs.offers);
-        setOrderUpdates(!!prefs.order_updates);
-        setNewsletter(!!prefs.newsletter);
+        setOffers({
+          sms: !!prefs.offers_sms,
+          email: !!prefs.offers_email,
+          push: prefs.offers_push ?? prefs.offers ?? false,
+        });
+        setOrderUpdates({
+          sms: !!prefs.order_updates_sms,
+          email: !!prefs.order_updates_email,
+          push: prefs.order_updates_push ?? prefs.order_updates ?? false,
+        });
+        setNewsletter({
+          sms: !!prefs.newsletter_sms,
+          email: !!prefs.newsletter_email,
+          push: prefs.newsletter_push ?? prefs.newsletter ?? false,
+        });
       } catch (err) {
         // If preferences don't exist yet, user can still save to create them.
         if (!mounted) return;
@@ -66,9 +110,17 @@ export default function UserPreferences() {
     setSuccess("");
     try {
       await updatePreferences(userId, {
-        offers,
-        order_updates: orderUpdates,
-        newsletter,
+        offers_sms: !!offers.sms,
+        offers_email: !!offers.email,
+        offers_push: !!offers.push,
+
+        order_updates_sms: !!orderUpdates.sms,
+        order_updates_email: !!orderUpdates.email,
+        order_updates_push: !!orderUpdates.push,
+
+        newsletter_sms: !!newsletter.sms,
+        newsletter_email: !!newsletter.email,
+        newsletter_push: !!newsletter.push,
       });
       setSuccess("Preferences saved");
     } catch (err) {
@@ -87,22 +139,22 @@ export default function UserPreferences() {
       <div className="max-w-2xl">
         <Card title="Notification Types" right={<Button onClick={onSave} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>}>
           <div className="space-y-3">
-            <ToggleRow
+            <ChannelRow
               label="Offers"
               hint="Promotions and discounts"
-              checked={offers}
+              value={offers}
               onChange={setOffers}
             />
-            <ToggleRow
+            <ChannelRow
               label="Order Updates"
               hint="Delivery and order status updates"
-              checked={orderUpdates}
+              value={orderUpdates}
               onChange={setOrderUpdates}
             />
-            <ToggleRow
+            <ChannelRow
               label="Newsletter"
               hint="Monthly updates and announcements"
-              checked={newsletter}
+              value={newsletter}
               onChange={setNewsletter}
             />
           </div>

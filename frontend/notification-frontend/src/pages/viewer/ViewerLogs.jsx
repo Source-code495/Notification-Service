@@ -79,8 +79,7 @@ export default function ViewerLogs() {
   }, [logs]);
 
   const typeOptions = useMemo(() => {
-    const set = new Set((logs || []).map((l) => l.campaign?.notification_type).filter(Boolean));
-    return Array.from(set);
+    return ["offers", "newsletter", "order_updates"];
   }, [logs]);
 
   const rangeLabel = useMemo(() => {
@@ -106,13 +105,32 @@ export default function ViewerLogs() {
       },
       {
         key: "campaign",
-        title: "Campaign",
+        title: "Source",
         render: (l) => (
           <div>
-            <div className="font-medium text-slate-900 dark:text-slate-50">{l.campaign?.campaign_name || "—"}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">{l.campaign?.notification_type || ""}</div>
+            <div className="font-medium text-slate-900 dark:text-slate-50">
+              {l.campaign
+                ? l.campaign.campaign_name
+                : l.newsletterArticle
+                  ? `${l.newsletterArticle.newsletter?.title ? `${l.newsletterArticle.newsletter.title} / ` : ""}${l.newsletterArticle.title}`
+                  : l.order
+                    ? `Order #${l.order.id.slice(0, 8)}...`
+                    : "—"}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {l.campaign ? l.campaign.notification_type : l.newsletterArticle ? "newsletter" : l.order ? "order_updates" : ""}
+            </div>
           </div>
         ),
+      },
+      {
+        key: "channel",
+        title: "Channel",
+        render: (l) => {
+          const channel = l.channel || "push";
+          const color = channel === "push" ? "blue" : channel === "email" ? "yellow" : "slate";
+          return <Badge color={color}>{channel}</Badge>;
+        },
       },
       { key: "status", title: "Status", render: (l) => <Badge color={l.status === "success" ? "green" : "red"}>{l.status}</Badge> },
     ],
@@ -125,11 +143,14 @@ export default function ViewerLogs() {
       {error ? <Alert type="error">{error}</Alert> : null}
       <Card title={`All Logs (${loading ? "..." : meta.total})`}>
         <div className="mb-3 grid gap-2 md:grid-cols-5">
-          <Input
-            placeholder="Search user/campaign..."
-            value={filters.q}
-            onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
-          />
+          <div>
+            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Search</div>
+            <Input
+              placeholder="Search user/source..."
+              value={filters.q}
+              onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
+            />
+          </div>
 
           <div>
             <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">From date</div>
@@ -149,31 +170,37 @@ export default function ViewerLogs() {
             />
           </div>
 
-          <select
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
-            value={filters.status}
-            onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
-          >
-            <option value="all">All status</option>
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div>
+            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Status</div>
+            <select
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+              value={filters.status}
+              onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
+            >
+              <option value="all">All status</option>
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
-            value={filters.type}
-            onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
-          >
-            <option value="all">All types</option>
-            {typeOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <div>
+            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Type</div>
+            <select
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+              value={filters.type}
+              onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
+            >
+              <option value="all">All types</option>
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Table columns={columns} rows={logs} keyField="id" />

@@ -29,7 +29,14 @@ export const register = async (req, res) => {
         role: "user",
       },
     });
-
+    const pref = await prisma.preference.create({
+      data: {
+        user_id: user.user_id,
+        offers: false,
+        order_updates: false,
+        newsletter: false,
+      },
+    });
     res.status(201).json({ message: "User registered successfully", user });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -91,6 +98,14 @@ export const AdminRegister = async (req, res) => {
         email,
         password: hashedPassword,
         role,
+      },
+    });
+    const pref = await prisma.preference.create({
+      data: {
+        user_id: user.user_id,
+        offers: false,
+        order_updates: false,
+        newsletter: false,
       },
     });
     res.status(201).json({ message: "User registered successfully", user });

@@ -16,7 +16,7 @@ datasource db {
 
 
 model User {
-  user_id   Int     @id @default(autoincrement())
+  user_id   String  @id @default(uuid())
   name      String
   email     String  @unique
   phone     String?
@@ -31,44 +31,134 @@ model User {
   preference Preference?
   logs       NotificationLog[]
   campaigns  Campaign[]        @relation("CampaignCreator")
+  newsletters NewsletterCategory[] @relation("NewsletterCreator")
+  newsletterArticles NewsletterArticle[] @relation("NewsletterArticleCreator")
+  orders     Order[]
+
+  newsletterSubscriptions NewsletterSubscription[]
 }
 
 model Preference {
-  id            Int  @id @default(autoincrement())
+  id            String  @id @default(uuid())
   offers        Boolean
   order_updates Boolean
   newsletter    Boolean
 
-  user_id Int  @unique
+  // Per-channel preferences (new)
+  offers_sms   Boolean @default(false)
+  offers_email Boolean @default(false)
+  offers_push  Boolean @default(false)
+
+  order_updates_sms   Boolean @default(false)
+  order_updates_email Boolean @default(false)
+  order_updates_push  Boolean @default(false)
+
+  newsletter_sms   Boolean @default(false)
+  newsletter_email Boolean @default(false)
+  newsletter_push  Boolean @default(false)
+
+  user_id String  @unique
   user    User @relation(fields: [user_id], references: [user_id] , onDelete: Cascade)
 }
 
+model Order {
+  id              String      @id @default(uuid())
+  user_id         String
+  user            User        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  items           Json
+  total_amount    Float
+  status          OrderStatus @default(ORDER_CONFIRMED)
+  
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  estimated_delivery DateTime
+
+  logs NotificationLog[]
+  @@map("orders")
+}
+
 model Campaign {
-  campaign_id       Int     @id @default(autoincrement())
+  campaign_id       String  @id @default(uuid())
   campaign_name     String
   notification_type NotificationType
   campaign_message  String
   image_url         String?
   city_filters      Json?
   status            CampaignStatus @default(draft)
+  scheduled_at      DateTime?
   created_at        DateTime @default(now())
-  created_by        Int
+  created_by        String
 
-  creator User @relation("CampaignCreator", fields: [created_by], references: [user_id])
+  creator User @relation("CampaignCreator", fields: [created_by], references: [user_id], onDelete: Cascade)
 
   logs NotificationLog[]
 }
 
 model NotificationLog {
-  id      Int      @id @default(autoincrement())
+  id      String   @id @default(uuid())
   sent_at DateTime @default(now())
   status  String
 
-  user_id Int
+  channel NotificationChannel @default(push)
+
+  user_id String
   user    User @relation(fields: [user_id], references: [user_id] , onDelete: Cascade)
 
-  campaign_id Int
-  campaign    Campaign @relation(fields: [campaign_id], references: [campaign_id] , onDelete: Cascade)
+  order_id String?
+  order    Order? @relation(fields: [order_id], references: [id] , onDelete: Cascade)
+
+  campaign_id String?
+  campaign    Campaign? @relation(fields: [campaign_id], references: [campaign_id] , onDelete: Cascade)
+
+  newsletter_article_id String?
+  newsletterArticle    NewsletterArticle? @relation(fields: [newsletter_article_id], references: [article_id] , onDelete: Cascade)
+}
+
+model NewsletterCategory {
+  newsletter_id      String   @id @default(uuid())
+  title              String
+  short_description  String
+  cover_image_url    String?
+  created_at         DateTime @default(now())
+  created_by         String
+
+  creator  User              @relation("NewsletterCreator", fields: [created_by], references: [user_id], onDelete: Cascade)
+  articles NewsletterArticle[]
+
+  subscriptions NewsletterSubscription[]
+
+  @@map("newsletter_categories")
+}
+
+model NewsletterSubscription {
+  id            String   @id @default(uuid())
+  user_id       String
+  newsletter_id String
+  subscribed_at DateTime @default(now())
+
+  user       User              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  newsletter NewsletterCategory @relation(fields: [newsletter_id], references: [newsletter_id], onDelete: Cascade)
+
+  @@unique([user_id, newsletter_id])
+  @@map("newsletter_subscriptions")
+}
+
+model NewsletterArticle {
+  article_id     String           @id @default(uuid())
+  newsletter_id  String
+  title          String
+  message        String
+  status         NewsletterStatus @default(draft)
+  created_at     DateTime         @default(now())
+  published_at   DateTime?
+  created_by     String
+
+  newsletter NewsletterCategory @relation(fields: [newsletter_id], references: [newsletter_id], onDelete: Cascade)
+  creator    User              @relation("NewsletterArticleCreator", fields: [created_by], references: [user_id], onDelete: Cascade)
+  logs       NotificationLog[]
+
+  @@map("newsletter_articles")
 }
 
 enum Role {
@@ -80,11 +170,30 @@ enum Role {
 
 enum NotificationType {
   offers
-  order_updates
-  newsletter
 }
 
 enum CampaignStatus {
   draft
+  scheduled
+  sending
   sent
+}
+
+enum NewsletterStatus {
+  draft
+  sent
+}
+
+enum OrderStatus {
+  ORDER_CONFIRMED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  push
+  sms
+  email
 }

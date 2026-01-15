@@ -39,8 +39,8 @@ export const getOverview = async (req, res) => {
     const { start, end, keys } = buildMonthKeys(months);
 
     const role = req.user?.role;
-    const userId = Number(req.user?.userId);
-    const isCreator = role === "creator" && Number.isFinite(userId);
+    const userId = req.user?.userId;
+    const isCreator = role === "creator" && userId;
 
     // Logs month-wise (notifications sent)
     const logsRows = await prisma.$queryRaw(

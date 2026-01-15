@@ -32,6 +32,14 @@ export const createUser = async (req, res) => {
         city: city ? city.trim() : null,
       },
     });
+    const pref = await prisma.preference.create({
+      data: {
+        user_id: user.user_id,
+        offers: false,
+        order_updates: false,
+        newsletter: false,
+      }
+    });
 
     res.status(201).json(user);
   } catch (err) {
@@ -117,6 +125,15 @@ export const getUsers = async (req, res) => {
             offers: true,
             order_updates: true,
             newsletter: true,
+            offers_sms: true,
+            offers_email: true,
+            offers_push: true,
+            order_updates_sms: true,
+            order_updates_email: true,
+            order_updates_push: true,
+            newsletter_sms: true,
+            newsletter_email: true,
+            newsletter_push: true,
           },
         },
       },
@@ -405,7 +422,7 @@ export const changeMyPassword = async (req, res) => {
 // UPDATE USER
 export const updateUser = async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = req.params.id;
     if (req.user?.role === "user" && req.user?.userId !== id) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -447,7 +464,7 @@ export const updateUser = async (req, res) => {
 
 // DELETE USER
 export const deleteUser = async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = req.params.id;
 
   if (req.user?.role === "user" && req.user?.userId !== id) {
     return res.status(403).json({ message: "Forbidden" });

@@ -7,9 +7,11 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Settings,
   Shield,
+  ShoppingBag,
   Users,
   X,
 } from "lucide-react";
@@ -57,6 +59,8 @@ export default function Sidebar({ onLogout }) {
         { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
         { label: "Users", path: "/admin/users", icon: Users },
         { label: "Campaigns", path: "/admin/campaigns", icon: BellRing },
+        { label: "Newsletters", path: "/admin/newsletters", icon: Mail },
+        { label: "Orders", path: "/admin/orders", icon: ShoppingBag },
         { label: "Logs", path: "/admin/logs", icon: ClipboardList },
         { label: "Create Staff", path: "/admin/create-staff", icon: Shield },
         { label: "Account Settings", path: "/account", icon: Settings },
@@ -67,6 +71,8 @@ export default function Sidebar({ onLogout }) {
         { label: "Dashboard", path: "/creator", icon: LayoutDashboard },
         { label: "Users", path: "/creator/users", icon: Users },
         { label: "Campaigns", path: "/creator/campaigns", icon: BellRing },
+        { label: "Newsletters", path: "/creator/newsletters", icon: Mail },
+        { label: "Orders", path: "/creator/orders", icon: ShoppingBag },
         { label: "Logs", path: "/creator/logs", icon: ClipboardList },
         { label: "Account Settings", path: "/account", icon: Settings },
       ];
@@ -75,12 +81,16 @@ export default function Sidebar({ onLogout }) {
       return [
         { label: "Dashboard", path: "/viewer", icon: LayoutDashboard },
         { label: "Campaigns", path: "/viewer/campaigns", icon: BellRing },
+        { label: "Newsletters", path: "/viewer/newsletters", icon: Mail },
         { label: "Logs", path: "/viewer/logs", icon: ClipboardList },
         { label: "Account Settings", path: "/account", icon: Settings },
       ];
     }
     return [
       { label: "Dashboard", path: "/app", icon: LayoutDashboard },
+      { label: "Shop Fashion", path: "/app/order", icon: ShoppingBag },
+      { label: "My Orders", path: "/app/orders", icon: ClipboardList },
+      { label: "Newsletters", path: "/app/newsletters", icon: Mail },
       { label: "Notifications", path: "/app/notifications", icon: BellRing },
       { label: "Preferences", path: "/app/preferences", icon: BarChart3 },
       { label: "Account Settings", path: "/account", icon: Settings },

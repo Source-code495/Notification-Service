@@ -11,6 +11,7 @@ import { FormField } from "../../components/ui/FormField";
 import {
   createCampaign,
   listCampaignsPaged,
+  scheduleCampaign,
   sendCampaign,
   updateCampaign,
 } from "../../services/campaignService";
@@ -18,11 +19,11 @@ import { getErrorMessage } from "../../services/http";
 import CampaignDetailsModal from "../../components/CampaignDetailsModal";
 import { Eye } from "lucide-react";
 import { INDIAN_CITIES } from "../../constants/cities";
+import { formatDateTimeFull } from "../../utils/format";
 
 const notificationTypes = [
   { value: "offers", label: "Offers" },
-  { value: "order_updates", label: "Order Updates" },
-  { value: "newsletter", label: "Newsletter" },
+  // { value: "order_updates", label: "Order Updates" },
 ];
 
 export default function CreatorCampaigns() {
@@ -171,7 +172,24 @@ export default function CreatorCampaigns() {
       {
         key: "status",
         title: "Status",
-        render: (c) => <Badge color={c.status === "sent" ? "green" : "yellow"}>{c.status}</Badge>,
+        render: (c) => (
+          <Badge
+            color={
+              c.status === "sent" ? "green" : c.status === "draft" ? "yellow" : "blue"
+            }
+          >
+            {c.status}
+          </Badge>
+        ),
+      },
+      {
+        key: "scheduled_at",
+        title: "Scheduled",
+        render: (c) => (
+          <span className="text-xs text-slate-600 dark:text-slate-300">
+            {c?.scheduled_at ? formatDateTimeFull(c.scheduled_at) : "—"}
+          </span>
+        ),
       },
       {
         key: "actions",
@@ -192,7 +210,20 @@ export default function CreatorCampaigns() {
             </Button>
 
             <Button
-              disabled={saving || c.status === "sent"}
+              variant="secondary"
+              disabled={saving || c.status !== "draft"}
+              onClick={(e) => {
+                e?.stopPropagation?.();
+                setModalError("");
+                setSelected(c);
+              }}
+              title={c.status !== "draft" ? "Only draft campaigns can be scheduled" : "Schedule campaign"}
+            >
+              Schedule
+            </Button>
+
+            <Button
+              disabled={saving || c.status !== "draft"}
               onClick={async (e) => {
                 e?.stopPropagation?.();
                 setSaving(true);
@@ -209,7 +240,7 @@ export default function CreatorCampaigns() {
                 }
               }}
             >
-              {c.status === "sent" ? "Sent" : "Send"}
+              {c.status === "sent" ? "Sent" : c.status === "draft" ? "Send" : "Locked"}
             </Button>
           </div>
         ),
@@ -373,6 +404,8 @@ export default function CreatorCampaigns() {
               >
                 <option value="all">All status</option>
                 <option value="draft">Draft</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="sending">Sending</option>
                 <option value="sent">Sent</option>
               </select>
               <Input
@@ -467,6 +500,25 @@ export default function CreatorCampaigns() {
                   try {
                     const res = await sendCampaign(c.campaign_id);
                     setSuccess(`${res?.message || "Campaign sent"} (recipients: ${res?.recipients ?? "?"})`);
+                    await fetchPage();
+                  } catch (err) {
+                    setModalError(getErrorMessage(err));
+                  } finally {
+                    setSaving(false);
+                  }
+                }
+              : undefined
+          }
+          onSchedule={
+            selected.status === "draft"
+              ? async (c, scheduled_at) => {
+                  setSaving(true);
+                  setModalError("");
+                  setSuccess("");
+                  try {
+                    const res = await scheduleCampaign(c.campaign_id, scheduled_at);
+                    setSelected(res?.campaign || c);
+                    setSuccess("Campaign scheduled");
                     await fetchPage();
                   } catch (err) {
                     setModalError(getErrorMessage(err));

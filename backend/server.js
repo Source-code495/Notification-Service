@@ -7,6 +7,10 @@ import authRoutes from "./routes/authRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
+
+import { startCampaignSchedulerCron } from "./jobs/campaignScheduler.js";
 
 
 dotenv.config();
@@ -46,13 +50,22 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/orders", orderRoutes);
 app.use("/users", userRoutes);
 app.use("/preferences", preferenceRoutes);
 app.use("/campaigns", campaignRoutes);
+app.use("/newsletters", newsletterRoutes);
 app.use("/logs", logRoutes);
 app.use("/analytics", analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  const enable = String(process.env.ENABLE_CAMPAIGN_CRON ?? "true").toLowerCase();
+  if (enable !== "false" && enable !== "0") {
+    startCampaignSchedulerCron();
+  } else {
+    console.log("Campaign scheduler cron disabled (ENABLE_CAMPAIGN_CRON=false)");
+  }
 });

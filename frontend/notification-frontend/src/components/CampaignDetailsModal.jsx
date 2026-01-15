@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "./ui/Modal";
 import Badge from "./ui/Badge";
 import Button from "./ui/Button";
@@ -6,6 +6,7 @@ import Input from "./ui/Input";
 import Alert from "./ui/Alert";
 import { FormField } from "./ui/FormField";
 import { INDIAN_CITIES } from "../constants/cities";
+import { formatDateTimeFull } from "../utils/format";
 
 function normalizeCityFilters(value) {
   if (!value) return [];
@@ -21,12 +22,22 @@ export default function CampaignDetailsModal({
   onClose,
   onSave,
   onSend,
+  onSchedule,
 }) {
   const editable = campaign?.status === "draft" && !!onSave;
+  const schedulable = campaign?.status === "draft" && !!onSchedule;
 
   const [imageUrl, setImageUrl] = useState(() => campaign?.image_url || "");
   const [cities, setCities] = useState(() => normalizeCityFilters(campaign?.city_filters));
   const [newCity, setNewCity] = useState("");
+  const [scheduledAtLocal, setScheduledAtLocal] = useState("");
+
+  useEffect(() => {
+    setImageUrl(campaign?.image_url || "");
+    setCities(normalizeCityFilters(campaign?.city_filters));
+    setNewCity("");
+    setScheduledAtLocal("");
+  }, [campaign?.campaign_id]);
 
   function addCity() {
     if (!editable) return;
@@ -51,6 +62,20 @@ export default function CampaignDetailsModal({
       <Button variant="ghost" onClick={onClose} disabled={saving}>
         Close
       </Button>
+      {onSchedule ? (
+        <Button
+          variant="secondary"
+          disabled={saving || !campaign || !schedulable || !scheduledAtLocal}
+          onClick={() => {
+            const d = new Date(scheduledAtLocal);
+            if (Number.isNaN(d.getTime())) return;
+            onSchedule?.(campaign, d.toISOString());
+          }}
+          title={!schedulable ? "Only draft campaigns can be scheduled" : undefined}
+        >
+          {saving ? "Working..." : "Schedule"}
+        </Button>
+      ) : null}
       {onSend ? (
         <Button
           variant="secondary"
@@ -109,6 +134,29 @@ export default function CampaignDetailsModal({
               </div>
             </div>
           </div>
+
+          {campaign?.scheduled_at ? (
+            <div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Scheduled send time (IST)</div>
+              <div className="mt-1 text-sm text-slate-800 dark:text-slate-100">
+                {formatDateTimeFull(campaign.scheduled_at)}
+              </div>
+            </div>
+          ) : null}
+
+          {schedulable ? (
+            <FormField
+              label="Schedule send (IST)"
+              hint="Logs will be generated only when scheduled time is reached."
+            >
+              <Input
+                type="datetime-local"
+                value={scheduledAtLocal}
+                onChange={(e) => setScheduledAtLocal(e.target.value)}
+                disabled={!schedulable || saving}
+              />
+            </FormField>
+          ) : null}
 
           {campaign?.creator ? (
             <div>

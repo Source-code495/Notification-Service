@@ -61,9 +61,28 @@ export default function UserNotifications() {
     fetchLogs(newPage, filters);
   };
 
+  const logType = (log) => {
+    if (log?.order) return "order_updates";
+    if (log?.newsletterArticle) return "newsletter";
+    return log?.campaign?.notification_type || "";
+  };
+
+  const badgeColor = (type) => {
+    switch (type) {
+      case "offers":
+        return "green";
+      case "order_updates":
+        return "blue";
+      case "newsletter":
+        return "yellow";
+      default:
+        return "slate";
+    }
+  };
+
   return (
     <div>
-      <PageHeader title="My Notifications" subtitle="All notifications sent to you." />
+      <PageHeader title="My Notifications" subtitle="Push notifications sent to you (based on your push preferences)." />
 
       {error ? <Alert type="error" className="mb-4">{error}</Alert> : null}
 
@@ -80,7 +99,7 @@ export default function UserNotifications() {
         >
             <option value="all">All Types</option>
             <option value="offers">Offers</option>
-            <option value="order_updates">Order Updates</option>
+          <option value="order_updates">Order Updates</option>
             <option value="newsletter">Newsletter</option>
         </select>
         <Input 
@@ -106,6 +125,25 @@ export default function UserNotifications() {
            </div>
         ) : (
           logs.map((log) => (
+            (() => {
+              const type = logType(log);
+              const title = log?.campaign
+                ? log.campaign.campaign_name
+                : log?.newsletterArticle
+                  ? `${log.newsletterArticle.newsletter?.title ? `${log.newsletterArticle.newsletter.title} / ` : ""}${log.newsletterArticle.title}`
+                : log?.order
+                  ? `Order #${log.order.id.slice(0, 8)}...`
+                  : "Notification";
+
+              const description = log?.campaign
+                ? log.campaign.campaign_message
+                : log?.newsletterArticle
+                  ? log.newsletterArticle.message
+                : log?.order
+                  ? `Your order status is ${(log?.status || "").replace(/_/g, " ")}.`
+                  : "";
+
+              return (
             <div
               key={log.id}
               className="group relative flex cursor-pointer flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-950/50"
@@ -113,11 +151,8 @@ export default function UserNotifications() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                   <Badge color={
-                     log.campaign.notification_type === 'offers' ? 'green' : 
-                     log.campaign.notification_type === 'order_updates' ? 'blue' : 'purple'
-                   }>
-                     {log.campaign.notification_type}
+                   <Badge color={badgeColor(type)}>
+                     {type ? type.replace(/_/g, " ") : ""}
                    </Badge>
                    <span className="text-xs text-slate-500 dark:text-slate-400">
                      {formatDateTime(log.sent_at)}
@@ -127,13 +162,15 @@ export default function UserNotifications() {
               </div>
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                  {log.campaign.campaign_name}
+                  {title}
                 </h3>
                 <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
-                  {log.campaign.campaign_message}
+                  {description}
                 </p>
               </div>
             </div>
+              );
+            })()
           ))
         )}
       </div>
@@ -166,31 +203,70 @@ export default function UserNotifications() {
         <Modal
           open={!!selectedLog}
           onClose={() => setSelectedLog(null)}
-          title={selectedLog.campaign.campaign_name}
+          title={
+            selectedLog.campaign
+              ? selectedLog.campaign.campaign_name
+              : selectedLog.newsletterArticle
+                ? `${selectedLog.newsletterArticle.newsletter?.title ? `${selectedLog.newsletterArticle.newsletter.title} / ` : ""}${selectedLog.newsletterArticle.title}`
+                : selectedLog.order
+                  ? `Order #${selectedLog.order.id.slice(0, 8)}...`
+                  : "Notification"
+          }
           className="max-w-2xl"
         >
           <div className="space-y-4">
              <div className="flex items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-               <Badge className="capitalize">{selectedLog.campaign.notification_type.replace('_', ' ')}</Badge>
+               <Badge className="capitalize">{logType(selectedLog).replace(/_/g, " ")}</Badge>
                <span className="text-sm text-slate-500">
                  Received on {formatDateTime(selectedLog.sent_at)}
                </span>
              </div>
 
-             <div className="rounded-md bg-slate-50 p-4 text-slate-800 dark:bg-slate-900 dark:text-slate-200 whitespace-pre-wrap">
-               {selectedLog.campaign.campaign_message}
-             </div>
+             {selectedLog.newsletterArticle ? (
+               <>
+                 <div className="rounded-md bg-slate-50 p-4 text-slate-800 dark:bg-slate-900 dark:text-slate-200 whitespace-pre-wrap">
+                   {selectedLog.newsletterArticle.message}
+                 </div>
 
-             {selectedLog.campaign.image_url && (
+                 {selectedLog.newsletterArticle.newsletter?.cover_image_url && (
+                   <div className="mt-4">
+                     <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Attachment</div>
+                     <img
+                       src={selectedLog.newsletterArticle.newsletter.cover_image_url}
+                       alt="Newsletter cover"
+                       className="max-h-96 w-full rounded-md object-contain bg-slate-100 dark:bg-slate-800"
+                     />
+                   </div>
+                 )}
+               </>
+             ) : selectedLog.campaign ? (
+               <>
+                 <div className="rounded-md bg-slate-50 p-4 text-slate-800 dark:bg-slate-900 dark:text-slate-200 whitespace-pre-wrap">
+                   {selectedLog.campaign.campaign_message}
+                 </div>
+
+                 {selectedLog.campaign.image_url && (
+                   <div className="mt-4">
+                     <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Attachment</div>
+                     <img
+                       src={selectedLog.campaign.image_url}
+                       alt="Notification Attachment"
+                       className="max-h-96 w-full rounded-md object-contain bg-slate-100 dark:bg-slate-800"
+                     />
+                   </div>
+                 )}
+               </>
+             ) : selectedLog.order ? (
                <div className="mt-4">
-                 <div className="mb-1 text-xs font-semibold uppercase text-slate-500">Attachment</div>
-                 <img 
-                   src={selectedLog.campaign.image_url} 
-                   alt="Notification Attachment" 
-                   className="max-h-96 w-full rounded-md object-contain bg-slate-100 dark:bg-slate-800"
-                 />
+                 <div className="rounded-md bg-slate-50 p-4 text-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                   <div className="text-sm text-slate-500">Order Status</div>
+                   <div className="font-semibold">{selectedLog?.status.replace(/_/g, " ")}</div>
+                   {typeof selectedLog.order.total_amount === "number" ? (
+                     <div className="mt-2 text-sm text-slate-500">Total: ${selectedLog.order.total_amount.toFixed(2)}</div>
+                   ) : null}
+                 </div>
                </div>
-             )}
+             ) : null}
              
              <div className="flex justify-end pt-4">
                <Button onClick={() => setSelectedLog(null)}>Close</Button>

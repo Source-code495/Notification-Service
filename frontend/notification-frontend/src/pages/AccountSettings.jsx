@@ -38,9 +38,9 @@ export default function AccountSettings() {
 
   const [tab, setTab] = useState("profile");
 
-  const [offers, setOffers] = useState(false);
-  const [orderUpdates, setOrderUpdates] = useState(false);
-  const [newsletter, setNewsletter] = useState(false);
+  const [offers, setOffers] = useState({ sms: false, email: false, push: false });
+  const [orderUpdates, setOrderUpdates] = useState({ sms: false, email: false, push: false });
+  const [newsletter, setNewsletter] = useState({ sms: false, email: false, push: false });
 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -71,9 +71,21 @@ export default function AccountSettings() {
       setEmail(data?.email || "");
       setPhone(data?.phone || "");
       setCity(data?.city || "");
-      setOffers(!!data?.preference?.offers);
-      setOrderUpdates(!!data?.preference?.order_updates);
-      setNewsletter(!!data?.preference?.newsletter);
+      setOffers({
+        sms: !!data?.preference?.offers_sms,
+        email: !!data?.preference?.offers_email,
+        push: data?.preference?.offers_push ?? data?.preference?.offers ?? false,
+      });
+      setOrderUpdates({
+        sms: !!data?.preference?.order_updates_sms,
+        email: !!data?.preference?.order_updates_email,
+        push: data?.preference?.order_updates_push ?? data?.preference?.order_updates ?? false,
+      });
+      setNewsletter({
+        sms: !!data?.preference?.newsletter_sms,
+        email: !!data?.preference?.newsletter_email,
+        push: data?.preference?.newsletter_push ?? data?.preference?.newsletter ?? false,
+      });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -95,9 +107,17 @@ export default function AccountSettings() {
       const updated = await updateMe({ name, phone, city });
 
 const prefUpdated = await updatePreferences(me.user_id, {
-  offers,
-  order_updates: orderUpdates,
-  newsletter,
+  offers_sms: !!offers.sms,
+  offers_email: !!offers.email,
+  offers_push: !!offers.push,
+
+  order_updates_sms: !!orderUpdates.sms,
+  order_updates_email: !!orderUpdates.email,
+  order_updates_push: !!orderUpdates.push,
+
+  newsletter_sms: !!newsletter.sms,
+  newsletter_email: !!newsletter.email,
+  newsletter_push: !!newsletter.push,
 });
 
 setMe({
@@ -285,36 +305,105 @@ setMe({
                         <span className="text-sm text-slate-300">
                           Offers & Promotions
                         </span>
-                        <input
-                          type="checkbox"
-                          checked={offers}
-                          onChange={(e) => setOffers(e.target.checked)}
-                          disabled={!editing}
-                        />
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!offers.sms}
+                              onChange={(e) => setOffers((p) => ({ ...p, sms: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            SMS
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!offers.email}
+                              onChange={(e) => setOffers((p) => ({ ...p, email: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Email
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!offers.push}
+                              onChange={(e) => setOffers((p) => ({ ...p, push: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Push
+                          </label>
+                        </div>
                       </label>
 
                       <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
                         <span className="text-sm text-slate-300">
                           Order Updates
                         </span>
-                        <input
-                          type="checkbox"
-                          checked={orderUpdates}
-                          onChange={(e) => setOrderUpdates(e.target.checked)}
-                          disabled={!editing}
-                        />
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!orderUpdates.sms}
+                              onChange={(e) => setOrderUpdates((p) => ({ ...p, sms: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            SMS
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!orderUpdates.email}
+                              onChange={(e) => setOrderUpdates((p) => ({ ...p, email: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Email
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!orderUpdates.push}
+                              onChange={(e) => setOrderUpdates((p) => ({ ...p, push: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Push
+                          </label>
+                        </div>
                       </label>
 
                       <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
                         <span className="text-sm text-slate-300">
                           Newsletter
                         </span>
-                        <input
-                          type="checkbox"
-                          checked={newsletter}
-                          onChange={(e) => setNewsletter(e.target.checked)}
-                          disabled={!editing}
-                        />
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!newsletter.sms}
+                              onChange={(e) => setNewsletter((p) => ({ ...p, sms: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            SMS
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!newsletter.email}
+                              onChange={(e) => setNewsletter((p) => ({ ...p, email: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Email
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={!!newsletter.push}
+                              onChange={(e) => setNewsletter((p) => ({ ...p, push: e.target.checked }))}
+                              disabled={!editing}
+                            />
+                            Push
+                          </label>
+                        </div>
                       </label>
                     </div>
                   </div>
@@ -328,6 +417,7 @@ setMe({
                         {formatDate(me?.created_at)}
                       </div>
                     </div>
+
                     <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-3">
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                         Last Updated
@@ -371,9 +461,21 @@ setMe({
                             setCity(me?.city || "");
                             setError("");
                             setSuccess("");
-                            setOffers(me?.preference?.offers || false);
-                            setOrderUpdates(me?.preference?.order_updates || false);
-                            setNewsletter(me?.preference?.newsletter || false);
+                            setOffers({
+                              sms: !!me?.preference?.offers_sms,
+                              email: !!me?.preference?.offers_email,
+                              push: me?.preference?.offers_push ?? me?.preference?.offers ?? false,
+                            });
+                            setOrderUpdates({
+                              sms: !!me?.preference?.order_updates_sms,
+                              email: !!me?.preference?.order_updates_email,
+                              push: me?.preference?.order_updates_push ?? me?.preference?.order_updates ?? false,
+                            });
+                            setNewsletter({
+                              sms: !!me?.preference?.newsletter_sms,
+                              email: !!me?.preference?.newsletter_email,
+                              push: me?.preference?.newsletter_push ?? me?.preference?.newsletter ?? false,
+                            });
                           }}
                         >
                           Cancel
